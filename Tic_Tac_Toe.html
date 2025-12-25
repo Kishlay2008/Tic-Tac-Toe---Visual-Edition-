@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe – Visual Edition</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(270deg,#667eea,#764ba2,#6a11cb);
+  background-size:600% 600%;
+  animation:bgMove 12s infinite;
+  overflow:hidden;
+}
+
+@keyframes bgMove{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+
+.particle{
+  position:fixed;
+  width:6px;
+  height:6px;
+  background:rgba(255,255,255,0.6);
+  border-radius:50%;
+  animation:float 8s linear infinite;
+}
+
+@keyframes float{
+  from{transform:translateY(100vh)}
+  to{transform:translateY(-10vh)}
+}
+
+.game{
+  position:relative;
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(14px);
+  padding:25px 30px;
+  border-radius:18px;
+  box-shadow:0 25px 50px rgba(0,0,0,.35);
+  text-align:center;
+  z-index:2;
+}
+
+h1{color:#fff;margin:0}
+.status{color:#eee;margin-top:6px}
+
+.board-wrapper{
+  position:relative;
+}
+
+.board{
+  margin:20px auto;
+  display:grid;
+  grid-template-columns:repeat(3,100px);
+  gap:14px;
+}
+
+svg{
+  position:absolute;
+  top:0;
+  left:0;
+  pointer-events:none;
+}
+
+.cell{
+  width:100px;
+  height:100px;
+  background:rgba(255,255,255,.25);
+  border-radius:14px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:2.8rem;
+  font-weight:600;
+  cursor:pointer;
+  color:#fff;
+  transition:.3s;
+  animation:pop .25s ease;
+}
+
+@keyframes pop{
+  from{transform:scale(0)}
+  to{transform:scale(1)}
+}
+
+.cell:hover{
+  transform:scale(1.08);
+  background:rgba(255,255,255,.45);
+}
+
+.cell.X{color:#00e5ff;text-shadow:0 0 12px #00e5ff}
+.cell.O{color:#ffea00;text-shadow:0 0 12px #ffea00}
+
+button{
+  padding:10px 26px;
+  border:none;
+  border-radius:30px;
+  font-weight:600;
+  background:linear-gradient(135deg,#00c6ff,#0072ff);
+  color:white;
+  cursor:pointer;
+  box-shadow:0 10px 25px rgba(0,114,255,.6);
+  margin-top:10px;
+}
+
+.confetti{
+  position:fixed;
+  width:10px;
+  height:10px;
+  top:-10px;
+  animation:fall 3s linear forwards;
+}
+
+@keyframes fall{
+  to{transform:translateY(100vh) rotate(720deg)}
+}
+</style>
+</head>
+
+<body>
+
+<!-- Background particles -->
+<script>
+for(let i=0;i<40;i++){
+  let p=document.createElement("div");
+  p.className="particle";
+  p.style.left=Math.random()*100+"vw";
+  p.style.animationDuration=Math.random()*5+5+"s";
+  document.body.appendChild(p);
+}
+</script>
+
+<div class="game">
+  <h1>Tic Tac Toe</h1>
+  <div class="status" id="status">Player X's turn</div>
+
+  <div class="board-wrapper">
+    <svg width="340" height="340" id="line">
+      <line x1="0" y1="0" x2="0" y2="0"
+        stroke="#00ffcc" stroke-width="8"
+        stroke-linecap="round" />
+    </svg>
+    <div class="board" id="board"></div>
+  </div>
+
+  <button onclick="resetGame()">Restart</button>
+  <button id="musicBtn">Play Music</button>
+</div>
+
+<!-- Background music -->
+<audio id="bgMusic" loop>
+  <source src="https://files.catbox.moe/c23b00.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Winning music -->
+<audio id="winMusic">
+  <source src="https://files.catbox.moe/rgqdsl.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const board=document.getElementById("board");
+const statusText=document.getElementById("status");
+const line=document.querySelector("line");
+const bgMusic=document.getElementById("bgMusic");
+const winMusic=document.getElementById("winMusic");
+const musicBtn=document.getElementById("musicBtn");
+
+let player="X";
+let active=true;
+let state=["","","","","","","","",""];
+
+const wins=[
+ [0,1,2],[3,4,5],[6,7,8],
+ [0,3,6],[1,4,7],[2,5,8],
+ [0,4,8],[2,4,6]
+];
+
+const pos=[
+ [50,50],[170,50],[290,50],
+ [50,170],[170,170],[290,170],
+ [50,290],[170,290],[290,290]
+];
+
+function createBoard(){
+ board.innerHTML="";
+ state.forEach((v,i)=>{
+  const c=document.createElement("div");
+  c.className="cell "+v;
+  c.textContent=v;
+  c.onclick=()=>clickCell(i);
+  board.appendChild(c);
+ });
+}
+
+function clickCell(i){
+ if(!active||state[i])return;
+ state[i]=player;
+ createBoard();
+ check();
+}
+
+function check(){
+ for(let w of wins){
+  const[a,b,c]=w;
+  if(state[a]&&state[a]==state[b]&&state[a]==state[c]){
+    active=false;
+    statusText.textContent=`🎉 Player ${player} Wins!`;
+    drawLine(a,c);
+    fireCrackers();
+    bgMusic.pause(); // Stop background music
+    winMusic.play(); // Play winning music
+    return;
+  }
+ }
+ if(!state.includes("")){
+  statusText.textContent="It's a Draw!";
+  active=false;
+  return;
+ }
+ player=player==="X"?"O":"X";
+ statusText.textContent=`Player ${player}'s turn`;
+}
+
+function drawLine(a,b){
+ line.setAttribute("x1",pos[a][0]);
+ line.setAttribute("y1",pos[a][1]);
+ line.setAttribute("x2",pos[b][0]);
+ line.setAttribute("y2",pos[b][1]);
+}
+
+function fireCrackers(){
+ for(let i=0;i<80;i++){
+  const d=document.createElement("div");
+  d.className="confetti";
+  d.style.left=Math.random()*100+"vw";
+  d.style.background=`hsl(${Math.random()*360},100%,50%)`;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),3000);
+ }
+}
+
+function resetGame(){
+ state=["","","","","","","","",""];
+ player="X";
+ active=true;
+ line.setAttribute("x1",0);
+ line.setAttribute("y1",0);
+ line.setAttribute("x2",0);
+ line.setAttribute("y2",0);
+ statusText.textContent="Player X's turn";
+ winMusic.pause();
+ winMusic.currentTime=0;
+ bgMusic.currentTime=0;
+ bgMusic.volume=0.4;
+ bgMusic.play().catch(()=>{});
+ createBoard();
+}
+
+// Music button toggle
+musicBtn.addEventListener("click",()=>{
+ if(bgMusic.paused){
+  bgMusic.play();
+  musicBtn.textContent="Pause Music";
+ } else {
+  bgMusic.pause();
+  musicBtn.textContent="Play Music";
+ }
+});
+
+bgMusic.volume=0.4;
+bgMusic.play().catch(()=>{});
+createBoard();
+</script>
+
+</body>
+</html>
